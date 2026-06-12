@@ -34,6 +34,8 @@ class WebRTCStreamer(
     private val mainHandler = Handler(Looper.getMainLooper())
     private var sharedFrameSource: SharedDJIFrameSource? = null
     private var whipPublisher: WhipPublisher? = null
+    /** Optional UDP/RTP publisher for mock video. Set before calling startWhip(). */
+    var udpRtpPublisher: UdpRtpPublisher? = null
     @Volatile private var selectedOptions: WebRTCMediaOptions = options
     @Volatile private var currentOptions: WebRTCMediaOptions = optionsForSource(options, mockVideoEnabled)
     @Volatile private var currentWhipUrl: String? = null
@@ -75,6 +77,10 @@ class WebRTCStreamer(
         // Stop WHIP publisher if active
         whipPublisher?.stop()
         whipPublisher = null
+
+        // Stop UDP/RTP publisher if active
+        udpRtpPublisher?.stop()
+        udpRtpPublisher = null
         
         // Dispose shared frame source
         sharedFrameSource?.dispose()
@@ -279,6 +285,7 @@ class WebRTCStreamer(
         return if (useMockVideo) {
             MockMp4VideoCapturer(droneName).apply {
                 metricsListener = ::handleFrameSourceMetrics
+                udpPublisher = udpRtpPublisher
             }
         } else {
             SharedVideoCapturerHandle(clientId, getOrCreateSharedSource())

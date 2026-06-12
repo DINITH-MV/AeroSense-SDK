@@ -47,6 +47,7 @@ import dji.sampleV5.aircraft.logger.WildBridgeFlightLogger
 import dji.sampleV5.aircraft.models.BasicAircraftControlVM
 import dji.sampleV5.aircraft.models.VirtualStickVM
 import dji.sampleV5.aircraft.server.TelemetryServer
+import dji.sampleV5.aircraft.webrtc.UdpRtpPublisher
 import dji.sampleV5.aircraft.webrtc.WebRTCMediaOptions
 import dji.sampleV5.aircraft.webrtc.WebRTCStreamer
 import dji.sampleV5.aircraft.webrtc.WebRTCStreamMetrics
@@ -128,6 +129,7 @@ class WildBridgeDefaultLayoutActivity : DefaultLayoutActivity() {
         private const val HTTP_PORT = 8080
         private const val TELEMETRY_PORT = 8081
         private const val MEDIAMTX_WHIP_PORT = 8889  // mediamtx WebRTC port for WHIP publish
+        private const val UDP_RTP_PORT = 8004           // mediamtx UDP/RTP ingest port for mock video
         private const val PREF_DRONE_NAME = "drone_name"
         private const val PREF_MEDIAMTX_SERVER = "mediamtx_server"
         private const val PREF_WEBRTC_FPS = "webrtc_fps"
@@ -678,6 +680,22 @@ class WildBridgeDefaultLayoutActivity : DefaultLayoutActivity() {
             return
         }
         try {
+            // Always keep the UDP publisher pointed at the same host as the WHIP/MediaMTX server.
+            // Extract host from whipUrl: "http://192.168.x.y:8889/..." → "192.168.x.y"
+            val serverHost = whipUrl
+                .removePrefix("http://")
+                .removePrefix("https://")
+                .substringBefore(":")
+                .substringBefore("/")
+            if (serverHost.isNotEmpty()) {
+                streamer.udpRtpPublisher?.stop()
+                streamer.udpRtpPublisher = UdpRtpPublisher(
+                    context = applicationContext,
+                    remoteHost = serverHost,
+                    remotePort = UDP_RTP_PORT
+                ).also { it.start() }
+                Log.i(TAG, "UDP/RTP publisher started → udp://$serverHost:$UDP_RTP_PORT")
+            }
             streamer.startWhip(whipUrl)
             Log.i(TAG, "WHIP publishing started: $whipUrl")
         } catch (e: Exception) {

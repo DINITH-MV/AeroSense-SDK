@@ -28,6 +28,9 @@ class MockMp4VideoCapturer(
     var metadataListener: DJIV5VideoCapturer.FrameMetadataListener? = null
     var metricsListener: ((WebRTCStreamMetrics) -> Unit)? = null
 
+    /** Optional UDP/RTP publisher. Set before startCapture() to stream frames via UDP. */
+    var udpPublisher: UdpRtpPublisher? = null
+
     private var appContext: Context? = null
     private var capturerObserver: CapturerObserver? = null
     private var retriever: MediaMetadataRetriever? = null
@@ -123,6 +126,15 @@ class MockMp4VideoCapturer(
                 }
             } finally {
                 videoFrame.release()
+            }
+
+            // Also push raw frame to UDP/RTP publisher if one is attached
+            udpPublisher?.let { pub ->
+                val bmp = synchronized(cacheLock) {
+                    if (frameCache.isEmpty()) null
+                    else frameCache[((nextFrameNumber - 1L) % frameCache.size).toInt()]
+                }
+                if (bmp != null) pub.pushFrame(bmp)
             }
 
             sentFramesInWindow++
