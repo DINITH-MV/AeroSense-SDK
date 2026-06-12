@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 class MockMp4VideoCapturer(
     private val droneName: String,
-    private val assetPath: String = "mock_video/jellyfish_1080_10s_5mb.mp4"
+    private val assetPath: String = "mock_video/Raw_drone_footage_round_2.mp4"
 ) : VideoCapturer {
 
     companion object {

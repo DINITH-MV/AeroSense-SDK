@@ -342,7 +342,7 @@ class WildBridgeDefaultLayoutActivity : DefaultLayoutActivity() {
     }
 
     @Volatile
-    private var aircraftConnected = true
+    private var aircraftConnected = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -492,7 +492,7 @@ class WildBridgeDefaultLayoutActivity : DefaultLayoutActivity() {
     private fun shouldAllowMockVideo(): Boolean = !aircraftConnected
 
     private fun setupAircraftConnectionListener() {
-        aircraftConnected = flightControllerConnectionKey.get(true)
+        aircraftConnected = flightControllerConnectionKey.get(false)
         applyAircraftConnectionState(aircraftConnected)
         KeyManager.getInstance().listen(flightControllerConnectionKey, this) { _, newValue ->
             mainHandler.post {
@@ -582,13 +582,16 @@ class WildBridgeDefaultLayoutActivity : DefaultLayoutActivity() {
         }
 
         try {
-            val descriptor = assets.openFd("mock_video/jellyfish_1080_10s_5mb.mp4")
+            val descriptor = assets.openFd("mock_video/Raw_drone_footage_round_2.mp4")
             val surface = Surface(surfaceTexture)
             mockPreviewPlayer = MediaPlayer().apply {
                 setDataSource(descriptor.fileDescriptor, descriptor.startOffset, descriptor.length)
                 setSurface(surface)
                 isLooping = true
-                setOnPreparedListener { player -> player.start() }
+                setOnPreparedListener { player ->
+                    surface.release()
+                    player.start()
+                }
                 setOnErrorListener { _, what, extra ->
                     Log.e(TAG, "Mock preview player error: what=$what extra=$extra")
                     true
@@ -596,7 +599,6 @@ class WildBridgeDefaultLayoutActivity : DefaultLayoutActivity() {
                 prepareAsync()
             }
             descriptor.close()
-            surface.release()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start mock preview: ${e.message}", e)
             stopMockVideoPreview()
