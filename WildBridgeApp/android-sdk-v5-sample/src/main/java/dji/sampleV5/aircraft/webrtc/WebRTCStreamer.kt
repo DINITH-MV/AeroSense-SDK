@@ -488,12 +488,15 @@ class WebRTCStreamer(
         if (!mockEnabled) return baseOptions
 
         // Mock MP4 playback cannot follow the "native" capture path because the
-        // bundled asset needs an explicit output size. Keep the user's selected
-        // DJI preset intact, but force the mock source onto a stable 1080p target.
-        return WebRTCMediaOptions.fullHD().copy(
-            fps = baseOptions.fps.coerceIn(1, 60),
-            videoCodec = baseOptions.videoCodec
-        )
+        // bundled asset needs an explicit output size. Use the user's selected
+        // resolution if explicit, otherwise fall back to 720p (not 1080p) to
+        // avoid saturating the encoder on mid-range phones.
+        val fallback = WebRTCMediaOptions.hd()
+        return if (baseOptions.usesSourceResolution) {
+            fallback.copy(fps = baseOptions.fps.coerceIn(1, 30), videoCodec = baseOptions.videoCodec)
+        } else {
+            baseOptions.copy(fps = baseOptions.fps.coerceIn(1, 30))
+        }
     }
 
     private fun resolutionLabelForOptions(options: WebRTCMediaOptions): String {
